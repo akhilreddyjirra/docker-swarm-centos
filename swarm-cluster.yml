@@ -59,6 +59,11 @@
 # add user to docker group
   - name: "add current user to docker group"
     user: name={{ ansible_ssh_user }} groups=docker append=yes
+# stop firewalld 
+  - name: "Stop Firewalld service"
+    service:
+      name: firewalld
+      state: stopped
 # Reload and restart docker service
   - name: Restart docker service
     service:
