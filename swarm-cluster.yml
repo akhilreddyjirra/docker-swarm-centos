@@ -1,4 +1,4 @@
-# 
+#
 - name: install Docker to all cluster hosts
   hosts: docker-swarm
   remote_user: root
@@ -9,7 +9,7 @@
   tasks:
   - name: Install yum-ext packages
     yum: pkg={{item}} state=installed
-    with_items : 
+    with_items :
       - yum-utils
       - device-mapper-persistent-data
       - lvm2
@@ -53,6 +53,12 @@
     service:
       name: docker
       enabled: yes
+# Add docker group
+  - name: "add docker group"
+    group: name=docker state=present
+# add user to docker group
+  - name: "add current user to docker group"
+    user: name={{ ansible_ssh_user }} groups=docker append=yes
 # Reload and restart docker service
   - name: Restart docker service
     service:
@@ -83,9 +89,9 @@
       add_host:
         hostname: "{{ item }}"
         groups: swarm_worker_bootstrap
-#      debug: 
+#      debug:
 #        msg: "{{ item }}"
-      with_items:  "{{ groups['docker-swarm-node'] }}"  
+      with_items:  "{{ groups['docker-swarm-node'] }}"
       when: "'active' not in swarm_status.stdout_lines"
       run_once: true
 
@@ -94,11 +100,11 @@
       add_host:
         hostname: "{{ item }}"
         groups: swarm_manager_bootstrap
-      with_items: "{{ groups['docker-swarm-manager'] }}" 
+      with_items: "{{ groups['docker-swarm-manager'] }}"
       when: "'active' not in swarm_status.stdout_lines"
       run_once: true
 
-# 
+#
 - name:  Initiate Docker Swarm Cluster
   hosts: swarm_manager_bootstrap[0]
   become: yes
@@ -106,11 +112,11 @@
     - name: initialize swarm cluster
       shell: >
         docker swarm init
-        --advertise-addr={{ swarm_iface | default('enp0s3') }}:2377
+        --advertise-addr={{ ansible_eth0['ipv4']['address'] }}:2377
       register: new_cluster_initiated
     - name: add initialized host to first_manager_node tmp group
       add_host:
-        hostname: "{{ groups['swarm_manager_bootstrap'][0] }}" 
+        hostname: "{{ groups['swarm_manager_bootstrap'][0] }}"
         groups: first_manager_node
       when: new_cluster_initiated | changed
 
@@ -147,9 +153,9 @@
     - name: join manager nodes to cluster
       shell: >
         docker swarm join
-        --advertise-addr={{ swarm_iface | default('eth0') }}:2377
+        --advertise-addr={{ ansible_eth0['ipv4']['address'] }}:2377
         --token={{ token }}
-        {{ hostvars[groups['first_manager_node'][0]]['swarm_manager_ip'] }}:2377
+        {{ hostvars[groups['first_manager_node'][0]]['swarm_manager_ip']['ansible_eth0']['ipv4']['address'] }}:2377
 
 # Join workers to cluster
 - name: Join worker nodes to cluster
@@ -161,8 +167,8 @@
     - name: join worker nodes to cluster
       shell: >
         docker swarm join
-        --advertise-addr={{ swarm_iface | default('enp0s3') }}:2377
         --token={{ token }}
-        {{ hostvars[groups['first_manager_node'][0]]['ansible_ssh_host'] }}:2377
+        {{ hostvars['swarm-manager-1']['ansible_eth0']['ipv4']['address'] }}:2377
       retries: 3
       delay: 20
+
