@@ -144,7 +144,6 @@
       when: "'first_manager_node' in groups"
 #    # Get Manager IP
 #    - name: retrieve swarm worker ip
-#      shell: Получить IP-менеджера
 #      register: swarm_manager_ip
 #      when: "'first_manager_node' in groups"
 
